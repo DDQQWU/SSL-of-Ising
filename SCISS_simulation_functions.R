@@ -1,22 +1,12 @@
-#package----
+#library----
 library(MASS)
 library(purrr)
 library(stats)
 library(matlib)
 library(glmnet)
 library(IsingSampler)
-#function----
-Hessian_est<-function(n,theta_j,S_y,j)
-{
-  Hessian_est_single <- array(0,dim <- c(q,q))
-  for(i in 1:n) 
-  {y_setminus_j <- S_y[,i]
-  y_setminus_j[j]<- 1
-  Hessian_est_single <- 
-    Hessian_est_single +(1/n)*y_setminus_j%*%t(y_setminus_j)*as.numeric(dg(t(theta_j)%*%y_setminus_j))}
-  return(Hessian_est_single)
-}
 
+#function----
 g <- function(a)
 {
   out <- exp(a)/(1+exp(a))
@@ -27,6 +17,17 @@ dg <- function(a)
 {
   out <- exp(a)/((1+exp(a))^2)
   return(out)
+}
+
+Hessian_est<-function(n,theta_j,S_y,j)
+{
+  Hessian_est_single <- array(0,dim <- c(q,q))
+  for(i in 1:n) 
+  {y_setminus_j <- t(S_y)[,i]
+  y_setminus_j[j]<- 1
+  Hessian_est_single <- 
+    Hessian_est_single +(1/n)*y_setminus_j%*%t(y_setminus_j)*as.numeric(dg(theta_j%*%y_setminus_j))}
+  return(Hessian_est_single)
 }
 
 t_s<-function(y1,q)
@@ -56,14 +57,14 @@ t_s<-function(y1,q)
       y_s=t(y1)[,i]
       y_s[j]=1
       y_j=t(y1)[j,i]
-      s[j,,i]=inv(Hessian_est(n,theta_supervise[,j],t(y1),j))%*%y_s*as.numeric(y_j-g(theta_supervise[,j]%*%y_s))
+      s[j,,i]=inv(Hessian_est(n,theta_supervise[,j],y1,j))%*%y_s*as.numeric(y_j-g(theta_supervise[,j]%*%y_s))
     }
   }
   L=list(s=s,theta_SL=theta_supervise)
   return(L)
 }
 
-t_ss<-function(n,N,y1,x1,x2,q,p)
+SCISS_Aug<-function(n,N,y1,x1,x2,q,p)
 {
   A_y<-array(0,c(q,2^q))
   col_sum<-1
@@ -83,7 +84,7 @@ t_ss<-function(n,N,y1,x1,x2,q,p)
   s<-T_S$s
   
   gamma_supervise<-array(0,c(q,q*(p+1)))
-  psi_j=array(0,c(q*(p+1),n))
+  psi_j<-array(0,c(q*(p+1),n))
   psi_sj<-rep(0,(p+1)*q)
   for(j in 1:q){
     for(i in 1:n){
@@ -95,14 +96,14 @@ t_ss<-function(n,N,y1,x1,x2,q,p)
         psi_j[,i]=psi_sj
       }}
     fit<-cv.glmnet(t(psi_j), 
-                t(y1)[j,],alpha=alpha,family="binomial",lambda=c(1:n^{1/2})/n,intercept=FALSE)
+                t(y1)[j,],alpha=0,family="binomial",lambda=c(1:n^{1/2})/n,intercept=FALSE)
     gamma_supervise[j,]<-coef(fit)[2:(q*(p+1)+1)] 
   }
   
   theta_ss<-array(0,dim=c(q,q))
   m<-array(0,dim=c(q,q,n+N))
   for(j in 1:q){
-    Hessian <- Hessian_est(n,theta_supervise[,j],t(y1),j)
+    Hessian <- Hessian_est(n,theta_supervise[,j],y1,j)
     inv_Hessian<-solve(Hessian)
     for(i in 1:n){
       P_all=0
@@ -172,15 +173,15 @@ t_ss<-function(n,N,y1,x1,x2,q,p)
       m[j,,i+n]<-S_condition_j_0
     }
     theta_ss[,j]<-theta_supervise[,j]-n^{-1}*rowSums(m[j,,1:n])
-    theta_ss[,j]<-theta_ss[,j]+N^{-1}*rowSums(weight*m[j,,((n+1):(n+N))])
+    theta_ss[,j]<-theta_ss[,j]+N^{-1}*rowSums(m[j,,((n+1):(n+N))])
   }
   theta_ss<-(t(theta_ss)+theta_ss)/2
   
-  L=list(theta_SL=theta_supervise,theta_SSL=theta_ss,m=m,s=s)
+  L=list(theta_SL=theta_supervise,theta_SCISS_Aug=theta_ss,m=m,s=s)
   return(L)
 }
 
-t_ssl_srg<-function(n,N,y1,x1,x2,q,p,TYPE)
+SCISS_PoS<-function(n,N,y1,x1,x2,q,p,TYPE)
 {
   A_y<-array(0,c(q,2^q))
   col_sum<-1
@@ -279,7 +280,7 @@ t_ssl_srg<-function(n,N,y1,x1,x2,q,p,TYPE)
         y_s<-A_y[,a]
         y_s[j]<-1
         y_j<-A_y[j,a]
-        S_specified_j_0<-inv_Hessian%*%y_s*as.numeric(y_j-g(t(theta_supervise[,j])%*%y_s))
+        S_specified_j_0<-inv_Hessian%*%y_s*as.numeric(y_j-g(theta_supervise[,j]%*%y_s))
         S_condition_j_0 <-S_condition_j_0+S_specified_j_0*P_ylinexw[a]
       }
       m[j,,i]<-S_condition_j_0
@@ -330,37 +331,35 @@ t_ssl_srg<-function(n,N,y1,x1,x2,q,p,TYPE)
     }
     
     theta_ss[,j]<-theta_supervise[,j]-n^{-1}*rowSums(m[j,,1:n])
-    theta_ss[,j]<-theta_ss[,j]+N^{-1}*rowSums(weight*m[j,,((n+1):(n+N))])
+    theta_ss[,j]<-theta_ss[,j]+N^{-1}*rowSums(m[j,,((n+1):(n+N))])
   }
   
   theta_ss<-(t(theta_ss)+theta_ss)/2
   
-  w<-array(0,c(q,q))
-  theta_ss_com<-array(0,c(q,q))
-  m_com<-array(0,c(q,q))
-  for(j in 1:q)
-  {
-    for(k in 1:q)
-    {
-      D_sl<-mean((s[j,k,]+s[k,j,])^2)/4/n
-      D_ssl<-mean((s[j,k,]+s[k,j,]-m[j,k,1:n]-m[k,j,1:n])^2)/4/n
-      cov_sl_ssl<-cov(theta_supervise[j,],theta_ss[j,])
-      ww<-optimize(fw,lower=0,upper=1,tol=0.000000001)
-      w[j,k]<-ww$minimum
-      m_com[j,k]<-ww$objective
-      theta_ss_com[j,k]<-w[j,k]*theta_supervise[j,k]+(1-w[j,k])*theta_ss[j,k]
-    }
-  }
+  # w<-array(0,c(q,q))
+  # theta_ss_com<-array(0,c(q,q))
+  # m_com<-array(0,c(q,q))
+  # for(j in 1:q)
+  # {
+  #   for(k in 1:q)
+  #   {
+  #     D_sl<-mean((s[j,k,]+s[k,j,])^2)/4/n
+  #     D_ssl<-mean((s[j,k,]+s[k,j,]-m[j,k,1:n]-m[k,j,1:n])^2)/4/n
+  #     cov_sl_ssl<-cov(theta_supervise[j,],theta_ss[j,])
+  #     ww<-optimize(fw,lower=0,upper=1,tol=0.000000001)
+  #     w[j,k]<-ww$minimum
+  #     m_com[j,k]<-ww$objective
+  #     theta_ss_com[j,k]<-w[j,k]*theta_supervise[j,k]+(1-w[j,k])*theta_ss[j,k]
+  #   }
+  # }
   
-  
-  L<-list(theta_SL=theta_supervise,theta_SSL=theta_ss,m=m,s=s)
+  L<-list(theta_SL=theta_supervise,theta_SCISS_PoS=theta_ss,m=m,s=s)
   return(L)
 }
 
 
 density_ratio<-function(x1,x2,y,p,q,n,N)#q=2
 {
-  
   YY=array(0,n+N)
   YY[(n+1):(n+N)]=1
   XX=array(0,dim=c(p+1,n+N))

@@ -27,10 +27,12 @@ diag(Graph)<-mu
 
 cc<-matrix(c(2.5,0.2,0.5,0.2,2.5,0.5,0.5,0.5,2.5),q,q)
 
+#replication----
 for(loop in 1:500)
 {
   set.seed(loop)
   supervise_num<-sort(sample.int(M,n))
+  #generate data
   Data <- IsingSampler(M,G,thresholds=mu,method="CFTP")
   S_y<-t(Data)
   S_y_supervise<-S_y[,supervise_num]
@@ -56,11 +58,11 @@ for(loop in 1:500)
   S_x_supervise<-S_x[,supervise_num]
   S_x_unsupervise<-S_x[,-supervise_num]
 
-    T_ssl<-t_ss(n,N,t(S_y_supervise),S_x_supervise,S_x_unsupervise,q,p)
-    T_ssl_srg<-t_ssl_srg(n,N,t(S_y_supervise),S_x_supervise,S_x_unsupervise,q,p,"gaussian")
-    theta_dr<-density_ratio(S_x_supervise,S_x_unsupervise,S_y_supervise,p,q,n,N)
-    path<-paste(loop,'.rda',sep='')
-    save(G,mu,T_ssl,T_ssl_srg,theta_dr,file =path)
+  SCISS_Aug_Re<-SCISS_Aug(n,N,t(S_y_supervise),S_x_supervise,S_x_unsupervise,q,p)
+  SCISS_PoS_Re<-SCISS_PoS(n,N,t(S_y_supervise),S_x_supervise,S_x_unsupervise,q,p,"gaussian")
+  theta_dr<-density_ratio(S_x_supervise,S_x_unsupervise,S_y_supervise,p,q,n,N)
+  path<-paste(loop,'.rda',sep='')
+  save(G,mu,SCISS_Aug_Re,SCISS_PoS_Re,theta_dr,file =path)
 }
 
 
