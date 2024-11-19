@@ -76,7 +76,7 @@ Empirical_Variance_intri: empirical variance after intrinsic updation
 
 ### Joint_SL(y)
 **Description**    
-The function is used for running "optimal" SL method.  
+The function is used for running "optimal" SL method. We mainly use this method to demonsrate the SL method we compare the SCISS method with is almost equivalent to the optimal one, therefore the superiority of SCISS is valid.  
 **Argument**  
 y: observed outcome   
 **Return Value**  
