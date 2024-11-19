@@ -1,7 +1,11 @@
 This code is for implementation of project *Robust and Efficient Semi-supervised Learning for Ising Model*. It is based on R language.
 # Before start  
 Ensure the following packages have been installed:  
-*MASS*, *stats*, *purrr*, *glmnet*, *IsingSampler*.  
+*MASS*  
+*stats*  
+*purrr*   
+*glmnet*   
+*IsingSampler*   
 
 # Introduction to main functions  
 The multiple results return in a list. Use $ operator to output each result.  
@@ -101,8 +105,33 @@ y: observed outcome
 **Return Value**  
 Optimal_SL: optimal SL estimator   
 s: score function in optimal SL method  
+ 
+# One example for regular configuration
+See Example.R for a regular example.  
+This example includes 500 replications of running SCISS method for regular configuration and analysis of the result.  
+The packages and functions are loaded in the two *source* lines in the beginning.   
+Briefly, we let the dimensionality of outcome be 3,   
+the dimensionality of auxiliary features be 3,   
+number of data with observed outcome be 200,     
+number of data with unobserved outcome be 10000,     
+true value matrix of Ising parameter:      
+|   | $\theta_{11}$ |  $\theta_{12}$ | $\theta_{13}$|
+|---|---|---|---|
+| $\theta_{11}$ | 0.1 | 0.3 | -0.6 |
+|  $\theta_{12}$ | 0.3 | -0.3 | 0.4 |
+| $\theta_{13}$ | -0.6 | 0.4 | 0.2 |
 
-# Example     
-See Example.R for an example. This example includes 500 replications of running SCISS method for regular configuration and analysis of the result. 
+x~y coefficient matrix:
+|   | $c_{11}$ | $c_{12}$ | $c_{13}$|
+|---|---|---|---|
+| $c_{11}$ | 2.5 | 0.2 | 0.5 |
+| $c_{12}$ | 0.2 | 2.5 | 0.5 |
+| $c_{13}$ | 0.5 | 0.5 | 2.5 |
+
+We set the number of replications to be 500 and do them inside the for loop.   
+Before starting, change the save_path to store the results.  
+Data generation, SCISS method, DR method are run in each replication.    
+We let the data generated in poisson way and let the model in SCISS-PoS be the same.  
+After running all the replications, use result_table() to analyze the result.
 
 
